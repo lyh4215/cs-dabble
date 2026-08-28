@@ -6,13 +6,17 @@ class Task:
     name: str
     execution: int   # C
     period: int      # T
+    critical: bool
 
 
-TASKS = [
-    Task("A", 20, 50),
-    Task("B", 20, 70),
-    Task("C", 30, 120),
+BASE_TASKS = [
+    Task("A", 20, 50,  True),
+    Task("B", 20, 70,  True),
+    Task("C", 30, 120, True),
 ]
+
+D = Task("D", 5, 100, False)   # U=0.05
+E = Task("E", 5, 100, True)    # U=0.05
 
 HORIZON = 600
 
@@ -196,17 +200,143 @@ def print_result(
             f"remaining={job['remaining']}"
         )
 
-def main():
-    utilization = sum(
+def utilization(tasks):
+    return sum(
         task.execution / task.period
-        for task in TASKS
+        for task in tasks
     )
 
-    print(f"CPU utilization demand: {utilization:.3f}")
+
+def admit_task(tasks, new_task):
+    candidate = tasks + [new_task]
+    candidate_util = utilization(candidate)
+
+    print(f"\nAdmission request: {new_task.name}")
+    print(f"critical           : {new_task.critical}")
+    print(f"current utilization: {utilization(tasks):.3f}")
+    print(f"after admission    : {candidate_util:.3f}")
+
+    # 그냥 들어갈 수 있으면 바로 accept
+    if candidate_util <= 1.0:
+        print(f"ACCEPT {new_task.name}")
+        return candidate
+
+    # CPU가 부족한데 새 task가 non-critical이면 거절
+    if not new_task.critical:
+        print(
+            f"REJECT {new_task.name}: "
+            "non-critical task would overload CPU"
+        )
+        return tasks
+
+    # 여기부터는 새 task가 critical
+    print(
+        f"{new_task.name} is critical. "
+        "Trying to evict non-critical tasks..."
+    )
+
+    # 기존 non-critical task들
+    non_critical = [
+        task
+        for task in tasks
+        if not task.critical
+    ]
+
+    # CPU를 많이 먹는 non-critical task부터 제거
+    non_critical.sort(
+        key=lambda task:
+            task.execution / task.period,
+        reverse=True,
+    )
+
+    remaining = list(tasks)
+    evicted = []
+
+    for task in non_critical:
+        remaining.remove(task)
+        evicted.append(task)
+
+        new_util = utilization(
+            remaining + [new_task]
+        )
+
+        print(
+            f"  evict {task.name}"
+            f" -> utilization={new_util:.3f}"
+        )
+
+        if new_util <= 1.0:
+            print(
+                f"ACCEPT {new_task.name}"
+            )
+
+            print(
+                "evicted:",
+                ", ".join(
+                    task.name
+                    for task in evicted
+                ),
+            )
+
+            return remaining + [new_task]
+
+    # non-critical을 전부 제거해도 불가능
+    print(
+        f"REJECT {new_task.name}: "
+        "not enough capacity even after eviction"
+    )
+
+    return tasks
+
+
+def main():
+    tasks = list(BASE_TASKS)
+
+    print(
+        f"Base utilization: "
+        f"{utilization(tasks):.3f}"
+    )
+
+    # non-critical D 요청
+    tasks = admit_task(
+        tasks,
+        D,
+    )
+
+    # critical E 요청
+    tasks = admit_task(
+        tasks,
+        E,
+    )
+
+    print("\nFinal admitted tasks:")
+
+    for task in tasks:
+        kind = (
+            "CRITICAL"
+            if task.critical
+            else "NON-CRITICAL"
+        )
+
+        print(
+            f"  {task.name}: "
+            f"C={task.execution}, "
+            f"T={task.period}, "
+            f"{kind}"
+        )
+
+    print(
+        f"\nFinal utilization: "
+        f"{utilization(tasks):.3f}"
+    )
 
     for policy in ["FCFS", "RM", "EDF"]:
-        timeline, misses, context_switches = simulate(
-            TASKS,
+        (
+            timeline,
+            misses,
+            context_switches,
+        ) = simulate(
+            tasks,
             HORIZON,
             policy,
             switch_cost=True,
@@ -218,7 +348,6 @@ def main():
             misses,
             context_switches,
         )
-
 
 if __name__ == "__main__":
     main()
