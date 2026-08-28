@@ -31,6 +31,21 @@ double column_major_sum(const std::vector<float>& a) {
     return sum;
 }
 
+template <int B>
+double blocked_sum(const std::vector<float>& a) {
+    double sum = 0.0;
+
+    for (int jj = 0; jj < N; jj += B) {
+        for (int i = 0; i < N; ++i) {
+            for (int j = jj; j < jj + B && j < N; ++j) {
+                sum += a[i * N + j];
+            }
+        }
+    }
+
+    return sum;
+}
+
 template <typename F>
 void benchmark(const char* name, F func, const std::vector<float>& a) {
     double best_ms = 1e100;
@@ -70,4 +85,11 @@ int main() {
 
     benchmark("row-major", row_major_sum, a);
     benchmark("column-major", column_major_sum, a);
+    benchmark("block 1",  blocked_sum<1>,  a);
+    benchmark("block 2",  blocked_sum<2>,  a);
+    benchmark("block 4",  blocked_sum<4>,  a);
+    benchmark("block 8",  blocked_sum<8>,  a);
+    benchmark("block 16", blocked_sum<16>, a);
+    benchmark("block 32", blocked_sum<32>, a);
+    benchmark("block 64", blocked_sum<64>, a);
 }
