@@ -1,27 +1,89 @@
 CXX := g++
 CXXFLAGS := -std=c++20 -O2 -Wall -Wextra
 
-TARGET := dist/epoll_server
-SRC := epoll_server.cpp
+DIST := dist
 
-.PHONY: all run run-et clean
+EPOLL_TARGET := $(DIST)/epoll_server
+POLL_TARGET := $(DIST)/poll_server
+SELECT_TARGET := $(DIST)/select_server
 
-all: $(TARGET)
+COMMON_SRC := connection.cpp
+COMMON_HDR := connection.hpp
 
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET)
 
-run:
-	./$(TARGET)
+.PHONY: \
+	all \
+	run \
+	run-et \
+	run-poll \
+	run-select \
+	run-debug \
+	run-et-debug \
+	run-poll-debug \
+	run-select-debug \
+	bench \
+	clean
 
-run-debug:
-	./$(TARGET) --debug
 
-run-et:
-	./$(TARGET) --et
+all: \
+	$(EPOLL_TARGET) \
+	$(POLL_TARGET) \
+	$(SELECT_TARGET)
 
-run-et-debug:
-	./$(TARGET) --et --debug
+
+$(EPOLL_TARGET): epoll_server.cpp $(COMMON_SRC) $(COMMON_HDR)
+	mkdir -p $(DIST)
+	$(CXX) $(CXXFLAGS) epoll_server.cpp $(COMMON_SRC) -o $(EPOLL_TARGET)
+
+
+$(POLL_TARGET): poll_server.cpp $(COMMON_SRC) $(COMMON_HDR)
+	mkdir -p $(DIST)
+	$(CXX) $(CXXFLAGS) poll_server.cpp $(COMMON_SRC) -o $(POLL_TARGET)
+
+
+$(SELECT_TARGET): select_server.cpp $(COMMON_SRC) $(COMMON_HDR)
+	mkdir -p $(DIST)
+	$(CXX) $(CXXFLAGS) select_server.cpp $(COMMON_SRC) -o $(SELECT_TARGET)
+
+
+run: $(EPOLL_TARGET)
+	./$(EPOLL_TARGET)
+
+
+run-et: $(EPOLL_TARGET)
+	./$(EPOLL_TARGET) --et
+
+
+run-poll: $(POLL_TARGET)
+	./$(POLL_TARGET)
+
+
+run-select: $(SELECT_TARGET)
+	./$(SELECT_TARGET)
+
+
+run-debug: $(EPOLL_TARGET)
+	./$(EPOLL_TARGET) --debug
+
+
+run-et-debug: $(EPOLL_TARGET)
+	./$(EPOLL_TARGET) --et --debug
+
+
+run-poll-debug: $(POLL_TARGET)
+	./$(POLL_TARGET) --debug
+
+
+run-select-debug: $(SELECT_TARGET)
+	./$(SELECT_TARGET) --debug
+
+
+bench: all
+	python compare_benchmark.py
+
 
 clean:
-	rm -f $(TARGET)
+	rm -f \
+		$(EPOLL_TARGET) \
+		$(POLL_TARGET) \
+		$(SELECT_TARGET)

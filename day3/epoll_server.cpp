@@ -1,3 +1,5 @@
+#include "connection.hpp"
+
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
@@ -11,14 +13,6 @@
 
 constexpr int PORT = 5000;
 constexpr int MAX_EVENTS = 1024;
-constexpr int BUF_SIZE = 65536;
-constexpr uint32_t MAX_MESSAGE_SIZE = 1024 * 1024; // 1 MiB
-
-
-struct Connection {
-    std::string in_buffer;
-    std::string out_buffer;
-};
 
 
 std::unordered_map<int, Connection> connections;
@@ -89,149 +83,14 @@ void update_events(
 }
 
 
-bool process_messages(int fd) {
-    Connection& conn = connections[fd];
-
-    while (true) {
-
-        // 4-byte length header조차 아직 다 안 왔음
-        if (conn.in_buffer.size() < 4) {
-            return true;
-        }
-
-        uint32_t network_length;
-
-        std::memcpy(
-            &network_length,
-            conn.in_buffer.data(),
-            sizeof(network_length)
-        );
-
-        uint32_t payload_length =
-            ntohl(network_length);
-
-        if (payload_length > MAX_MESSAGE_SIZE) {
-            std::cerr
-                << "fd="
-                << fd
-                << " message too large: "
-                << payload_length
-                << '\n';
-
-            return false;
-        }
-
-        size_t frame_size =
-            sizeof(uint32_t)
-            + payload_length;
-
-        // header는 있지만 payload가 아직 덜 왔음
-        if (conn.in_buffer.size() < frame_size) {
-            return true;
-        }
-
-        // 완전한 frame 하나 확보
-        std::string payload(
-            conn.in_buffer.data()
-                + sizeof(uint32_t),
-            payload_length
-        );
-
-        debug_log(
-            "fd=",
-            fd,
-            " message=\"",
-            payload,
-            "\""
-        );
-
-        // 처리한 frame 제거
-        conn.in_buffer.erase(
-            0,
-            frame_size
-        );
-
-        //
-        // Echo response 생성
-        //
-        uint32_t response_length =
-            htonl(
-                static_cast<uint32_t>(
-                    payload.size()
-                )
-            );
-
-        conn.out_buffer.append(
-            reinterpret_cast<const char*>(
-                &response_length
-            ),
-            sizeof(response_length)
-        );
-
-        conn.out_buffer.append(payload);
-
-        //
-        // while 반복
-        //
-        // in_buffer 뒤에 frame이 하나 더
-        // 붙어 있을 수도 있기 때문
-        //
-    }
-}
-
-
 void handle_read(
     int epfd,
     int fd
 ) {
-    char buffer[BUF_SIZE];
+    Connection& conn =
+        connections.at(fd);
 
-    while (true) {
-
-        ssize_t n = recv(
-            fd,
-            buffer,
-            sizeof(buffer),
-            0
-        );
-
-        if (n > 0) {
-
-            connections[fd]
-                .in_buffer
-                .append(
-                    buffer,
-                    static_cast<size_t>(n)
-                );
-
-            continue;
-        }
-
-        //
-        // recv() == 0
-        // peer가 connection 종료
-        //
-        if (n == 0) {
-            close_client(
-                epfd,
-                fd
-            );
-
-            return;
-        }
-
-        //
-        // non-blocking socket에서
-        // 현재 더 읽을 데이터 없음
-        //
-        if (errno == EAGAIN ||
-            errno == EWOULDBLOCK) {
-
-            break;
-        }
-
-        perror("recv");
-
+    if (!read_from_socket(fd, conn)) {
         close_client(
             epfd,
             fd
@@ -240,28 +99,12 @@ void handle_read(
         return;
     }
 
-    //
-    // raw byte stream에서
-    // complete frame들을 꺼내 처리
-    //
-    if (!process_messages(fd)) {
-
-        close_client(
-            epfd,
-            fd
-        );
-
-        return;
-    }
 
     //
-    // 보낼 데이터가 생겼으면
-    // EPOLLOUT도 감시
+    // response가 생겼으면
+    // EPOLLOUT 관심 등록
     //
-    if (!connections[fd]
-             .out_buffer
-             .empty()) {
-
+    if (!conn.out_buffer.empty()) {
         update_events(
             epfd,
             fd,
@@ -270,54 +113,14 @@ void handle_read(
     }
 }
 
-
 void handle_write(
     int epfd,
     int fd
 ) {
-    auto it = connections.find(fd);
+    Connection& conn =
+        connections.at(fd);
 
-    if (it == connections.end()) {
-        return;
-    }
-
-    Connection& conn = it->second;
-
-    while (!conn.out_buffer.empty()) {
-
-        ssize_t n = send(
-            fd,
-            conn.out_buffer.data(),
-            conn.out_buffer.size(),
-            MSG_NOSIGNAL
-        );
-
-        if (n > 0) {
-
-            conn.out_buffer.erase(
-                0,
-                static_cast<size_t>(n)
-            );
-
-            continue;
-        }
-
-        if (n == -1 &&
-            (errno == EAGAIN ||
-             errno == EWOULDBLOCK)) {
-
-            //
-            // kernel send buffer에
-            // 현재 공간 없음
-            //
-            // EPOLLOUT 이벤트가
-            // 다시 올 때까지 기다림
-            //
-            break;
-        }
-
-        perror("send");
-
+    if (!write_to_socket(fd, conn)) {
         close_client(
             epfd,
             fd
@@ -326,12 +129,12 @@ void handle_write(
         return;
     }
 
+
     //
     // 전부 보냈으면
-    // EPOLLOUT 감시는 끈다
+    // EPOLLOUT 관심 제거
     //
     if (conn.out_buffer.empty()) {
-
         update_events(
             epfd,
             fd,
@@ -339,8 +142,6 @@ void handle_write(
         );
     }
 }
-
-
 
 
 int main(int argc, char* argv[]) {
