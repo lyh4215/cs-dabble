@@ -250,17 +250,26 @@ async def run_sweep(
     active_connections,
     requests_per_active,
     message_size,
+    large=False
 ):
     #
     # select의 FD_SETSIZE를 고려해
     # 공통 비교에서는 800까지만 사용.
     #
-    totals = [
-        100,
-        300,
-        500,
-        800,
-    ]
+    if large:
+        totals = [
+            1000,
+            2000,
+            5000,
+            10000,
+        ]
+    else:
+        totals = [
+            100,
+            300,
+            500,
+            800,
+        ]
 
     results = []
 
@@ -348,13 +357,19 @@ async def main():
         action="store_true",
     )
 
+    parser.add_argument(
+        "--large-sweep",
+        action="store_true",
+    )
+
     args = parser.parse_args()
 
-    if args.sweep:
+    if args.sweep or args.large_sweep:
         await run_sweep(
             args.active,
             args.requests,
             args.size,
+            large=args.large_sweep,
         )
 
     else:

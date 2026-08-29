@@ -19,13 +19,7 @@ RESULT_DIR = Path(
     "dist/benchmark_results/idle"
 )
 
-
 SERVERS = {
-    "SELECT": [
-        "make",
-        "run-select",
-    ],
-
     "POLL": [
         "make",
         "run-poll",
@@ -35,12 +29,29 @@ SERVERS = {
         "make",
         "run",
     ],
-
-    "EPOLL-ET": [
-        "make",
-        "run-et",
-    ],
 }
+
+# SERVERS = {
+#     "SELECT": [
+#         "make",
+#         "run-select",
+#     ],
+
+#     "POLL": [
+#         "make",
+#         "run-poll",
+#     ],
+
+#     "EPOLL-LT": [
+#         "make",
+#         "run",
+#     ],
+
+#     "EPOLL-ET": [
+#         "make",
+#         "run-et",
+#     ],
+# }
 
 
 ROW_PATTERN = re.compile(
@@ -206,7 +217,7 @@ def run_once(
         [
             sys.executable,
             "idle_load_test.py",
-            "--sweep",
+            "--large-sweep",
         ],
 
         capture_output=True,
@@ -368,10 +379,7 @@ def save_csv(
 
     return path
 
-
-def print_throughput(
-    summary,
-):
+def print_throughput(summary):
     lookup = {
         (
             row["mode"],
@@ -385,36 +393,42 @@ def print_throughput(
         for row in summary
     })
 
-
     print()
     print(
-        f"Mostly-idle throughput "
+        f"Large mostly-idle throughput "
         f"(median of {REPEATS})"
     )
 
     print(
         f"{'total':>7} "
-        f"{'select':>10} "
-        f"{'poll':>10} "
-        f"{'epoll-LT':>10} "
-        f"{'epoll-ET':>10}"
+        f"{'poll':>12} "
+        f"{'epoll-LT':>12} "
+        f"{'diff':>9}"
     )
 
-    print("-" * 55)
+    print("-" * 46)
 
     for total in totals:
+        poll = lookup[
+            ("POLL", total)
+        ]["throughput"]
+
+        epoll = lookup[
+            ("EPOLL-LT", total)
+        ]["throughput"]
+
+        diff = (
+            (epoll / poll) - 1
+        ) * 100
+
         print(
             f"{total:>7} "
-            f"{lookup[('SELECT', total)]['throughput']:>10.0f} "
-            f"{lookup[('POLL', total)]['throughput']:>10.0f} "
-            f"{lookup[('EPOLL-LT', total)]['throughput']:>10.0f} "
-            f"{lookup[('EPOLL-ET', total)]['throughput']:>10.0f}"
+            f"{poll:>12.0f} "
+            f"{epoll:>12.0f} "
+            f"{diff:>+8.1f}%"
         )
 
-
-def print_p99(
-    summary,
-):
+def print_p99(summary):
     lookup = {
         (
             row["mode"],
@@ -428,32 +442,34 @@ def print_p99(
         for row in summary
     })
 
-
     print()
     print(
-        f"Mostly-idle p99 latency "
+        f"Large mostly-idle p99 latency "
         f"(median of {REPEATS})"
     )
 
     print(
         f"{'total':>7} "
-        f"{'select':>10} "
-        f"{'poll':>10} "
-        f"{'epoll-LT':>10} "
-        f"{'epoll-ET':>10}"
+        f"{'poll':>12} "
+        f"{'epoll-LT':>12}"
     )
 
-    print("-" * 63)
+    print("-" * 35)
 
     for total in totals:
+        poll = lookup[
+            ("POLL", total)
+        ]["p99"]
+
+        epoll = lookup[
+            ("EPOLL-LT", total)
+        ]["p99"]
+
         print(
             f"{total:>7} "
-            f"{lookup[('SELECT', total)]['p99']:>9.3f}ms "
-            f"{lookup[('POLL', total)]['p99']:>9.3f}ms "
-            f"{lookup[('EPOLL-LT', total)]['p99']:>9.3f}ms "
-            f"{lookup[('EPOLL-ET', total)]['p99']:>9.3f}ms"
+            f"{poll:>11.3f}ms "
+            f"{epoll:>11.3f}ms"
         )
-
 
 def main():
     RESULT_DIR.mkdir(
