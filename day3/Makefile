@@ -22,6 +22,7 @@ COMMON_HDR := connection.hpp
 	run-poll-debug \
 	run-select-debug \
 	bench \
+	bench-idle \
 	clean
 
 
@@ -81,6 +82,8 @@ run-select-debug: $(SELECT_TARGET)
 bench: all
 	python compare_benchmark.py
 
+bench-idle: all
+	python compare_idle_benchmark.py
 
 clean:
 	rm -f \
