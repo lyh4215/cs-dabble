@@ -22,6 +22,27 @@ struct Connection {
 
 
 std::unordered_map<int, Connection> connections;
+bool use_et = false;
+bool debug = false;
+
+template <typename... Args>
+void debug_log(Args&&... args) {
+    if (!debug) {
+        return;
+    }
+
+    (std::cout << ... << args) << '\n';
+}
+
+uint32_t read_events() {
+    uint32_t events = EPOLLIN;
+
+    if (use_et) {
+        events |= EPOLLET;
+    }
+
+    return events;
+}
 
 
 void close_client(int epfd, int fd) {
@@ -35,10 +56,10 @@ void close_client(int epfd, int fd) {
     close(fd);
     connections.erase(fd);
 
-    std::cout
-        << "closed fd="
-        << fd
-        << '\n';
+    debug_log(
+        "closed fd=",
+        fd
+    );
 }
 
 
@@ -50,7 +71,7 @@ void update_events(
     epoll_event ev{};
 
     ev.data.fd = fd;
-    ev.events = EPOLLIN;
+    ev.events = read_events();
 
     if (want_write) {
         ev.events |= EPOLLOUT;
@@ -116,12 +137,13 @@ bool process_messages(int fd) {
             payload_length
         );
 
-        std::cout
-            << "fd="
-            << fd
-            << " message=\""
-            << payload
-            << "\"\n";
+        debug_log(
+            "fd=",
+            fd,
+            " message=\"",
+            payload,
+            "\""
+        );
 
         // 처리한 frame 제거
         conn.in_buffer.erase(
@@ -319,7 +341,23 @@ void handle_write(
 }
 
 
-int main() {
+
+
+int main(int argc, char* argv[]) {
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+
+        if (arg == "--et") {
+            use_et = true;
+        } else if (arg == "--debug") {
+            debug = true;
+        }
+    }
+
+    std::cout
+        << "mode: "
+        << (use_et ? "ET" : "LT")
+        << '\n';
 
     //
     // listening socket
@@ -404,8 +442,7 @@ int main() {
     listen_event.data.fd =
         listen_fd;
 
-    listen_event.events =
-        EPOLLIN;
+    listen_event.events = read_events();
 
 
     if (epoll_ctl(
@@ -519,8 +556,7 @@ int main() {
                     client_event.data.fd =
                         client_fd;
 
-                    client_event.events =
-                        EPOLLIN;
+                    client_event.events = read_events();
 
 
                     if (epoll_ctl(
@@ -544,26 +580,25 @@ int main() {
                     ] = {};
 
 
-                    char ip[INET_ADDRSTRLEN];
+                    if (debug) {
+                        char ip[INET_ADDRSTRLEN];
 
-                    inet_ntop(
-                        AF_INET,
-                        &client_addr.sin_addr,
-                        ip,
-                        sizeof(ip)
-                    );
+                        inet_ntop(
+                            AF_INET,
+                            &client_addr.sin_addr,
+                            ip,
+                            sizeof(ip)
+                        );
 
-
-                    std::cout
-                        << "accepted fd="
-                        << client_fd
-                        << " from "
-                        << ip
-                        << ":"
-                        << ntohs(
-                            client_addr.sin_port
-                        )
-                        << '\n';
+                        debug_log(
+                            "accepted fd=",
+                            client_fd,
+                            " from ",
+                            ip,
+                            ":",
+                            ntohs(client_addr.sin_port)
+                        );
+                    }
                 }
 
                 continue;
