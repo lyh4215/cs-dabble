@@ -11,7 +11,11 @@ from dataclasses import dataclass
 HOST = "127.0.0.1"
 PORT = 5000
 
-SECRET_KEY = b"day4-secret-key"
+CLIENT_KEYS = {
+    "alice": b"alice-secret-key",
+    "bob": b"bob-secret-key",
+}
+
 MAX_AGE = 5
 
 SEEN_NONCES = set()
@@ -105,8 +109,8 @@ def recv_frame(sock):
         length,
     )
 
-
 def calculate_mac(
+    key,
     client_id,
     timestamp,
     nonce,
@@ -120,15 +124,29 @@ def calculate_mac(
     ).encode()
 
     return hmac.new(
-        SECRET_KEY,
+        key,
         payload,
         hashlib.sha256,
     ).hexdigest()
 
 
 def verify_request(request):
+    client_id = request["client_id"]
+
+    key = CLIENT_KEYS.get(
+        client_id
+    )
+
+    if key is None:
+        print(
+            f"unknown client: {client_id}"
+        )
+        return False
+
+
     expected = calculate_mac(
-        request["client_id"],
+        key,
+        client_id,
         request["timestamp"],
         request["nonce"],
         request["message"],

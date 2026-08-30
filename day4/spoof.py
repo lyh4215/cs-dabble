@@ -1,21 +1,19 @@
 import hashlib
 import hmac
 import json
+import secrets
 import socket
 import struct
 import time
-from pathlib import Path
-import secrets
 
 
 HOST = "127.0.0.1"
 PORT = 5000
 
-SECRET_KEY = b"alice-secret-key"
-
-CAPTURE_PATH = Path(
-    "dist/captured.bin"
-)
+#
+# Bob도 현재 공용 secret을 알고 있다고 가정
+#
+SECRET_KEY = b"bob-secret-key"
 
 
 def calculate_mac(
@@ -38,10 +36,13 @@ def calculate_mac(
     ).hexdigest()
 
 
+#
+# 실제로는 Bob인데 Alice라고 주장
+#
 client_id = "alice"
 timestamp = int(time.time())
-message = "transfer 100"
 nonce = secrets.token_hex(16)
+message = "I am Alice"
 
 
 request = {
@@ -63,26 +64,9 @@ payload = json.dumps(
     request
 ).encode()
 
-
 frame = (
-    struct.pack(
-        "!I",
-        len(payload),
-    )
+    struct.pack("!I", len(payload))
     + payload
-)
-
-
-#
-# 공격자가 packet을 복사했다고 가정.
-#
-CAPTURE_PATH.write_bytes(
-    frame
-)
-
-print(
-    f"captured packet → "
-    f"{CAPTURE_PATH}"
 )
 
 
@@ -91,16 +75,8 @@ sock = socket.socket(
     socket.SOCK_STREAM,
 )
 
-sock.connect(
-    (HOST, PORT)
-)
-
-sock.sendall(
-    frame
-)
-
+sock.connect((HOST, PORT))
+sock.sendall(frame)
 sock.close()
 
-print(
-    "request sent"
-)
+print("spoof request sent")
