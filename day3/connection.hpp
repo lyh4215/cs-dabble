@@ -11,6 +11,8 @@ constexpr uint32_t MAX_MESSAGE_SIZE = 1024 * 1024;
 struct Connection {
     std::string in_buffer;
     std::string out_buffer;
+
+    bool read_paused = false;
 };
 
 

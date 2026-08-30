@@ -13,6 +13,11 @@
 
 constexpr int PORT = 5000;
 constexpr int MAX_EVENTS = 1024;
+constexpr size_t HIGH_WATER_MARK =
+    1024 * 1024;
+
+constexpr size_t LOW_WATER_MARK =
+    512 * 1024;
 
 
 std::unordered_map<int, Connection> connections;
@@ -60,28 +65,32 @@ void close_client(int epfd, int fd) {
 void update_events(
     int epfd,
     int fd,
+    bool want_read,
     bool want_write
 ) {
     epoll_event ev{};
 
-    ev.data.fd = fd;
-    ev.events = read_events();
+    if (want_read) {
+        ev.events |= EPOLLIN;
+    }
 
     if (want_write) {
         ev.events |= EPOLLOUT;
     }
 
-    if (epoll_ctl(
-            epfd,
-            EPOLL_CTL_MOD,
-            fd,
-            &ev
-        ) == -1) {
-
-        perror("epoll_ctl MOD");
+    if (use_et) {
+        ev.events |= EPOLLET;
     }
-}
 
+    ev.data.fd = fd;
+
+    epoll_ctl(
+        epfd,
+        EPOLL_CTL_MOD,
+        fd,
+        &ev
+    );
+}
 
 void handle_read(
     int epfd,
@@ -90,7 +99,10 @@ void handle_read(
     Connection& conn =
         connections.at(fd);
 
-    if (!read_from_socket(fd, conn)) {
+    if (!read_from_socket(
+        fd,
+        conn
+    )) {
         close_client(
             epfd,
             fd
@@ -99,18 +111,27 @@ void handle_read(
         return;
     }
 
+    if (
+        conn.out_buffer.size()
+        >= HIGH_WATER_MARK
+    ) {
+        conn.read_paused = true;
 
-    //
-    // response가 생겼으면
-    // EPOLLOUT 관심 등록
-    //
-    if (!conn.out_buffer.empty()) {
-        update_events(
-            epfd,
-            fd,
-            true
-        );
+        std::cout
+            << "[PAUSE READ] fd="
+            << fd
+            << " pending="
+            << conn.out_buffer.size()
+            << '\n';
     }
+
+    update_events(
+        epfd,
+        fd,
+
+        !conn.read_paused,
+        !conn.out_buffer.empty()
+    );
 }
 
 void handle_write(
@@ -120,7 +141,10 @@ void handle_write(
     Connection& conn =
         connections.at(fd);
 
-    if (!write_to_socket(fd, conn)) {
+    if (!write_to_socket(
+        fd,
+        conn
+    )) {
         close_client(
             epfd,
             fd
@@ -129,18 +153,28 @@ void handle_write(
         return;
     }
 
+    if (
+        conn.read_paused &&
+        conn.out_buffer.size()
+            <= LOW_WATER_MARK
+    ) {
+        conn.read_paused = false;
 
-    //
-    // 전부 보냈으면
-    // EPOLLOUT 관심 제거
-    //
-    if (conn.out_buffer.empty()) {
-        update_events(
-            epfd,
-            fd,
-            false
-        );
+        std::cout
+            << "[RESUME READ] fd="
+            << fd
+            << " pending="
+            << conn.out_buffer.size()
+            << '\n';
     }
+
+    update_events(
+        epfd,
+        fd,
+
+        !conn.read_paused,
+        !conn.out_buffer.empty()
+    );
 }
 
 
@@ -346,6 +380,23 @@ int main(int argc, char* argv[]) {
                         perror("accept4");
                         break;
                     }
+
+                    // 여기 추가
+                    int send_buffer_size =
+                        16 * 1024;
+
+                    if (
+                        setsockopt(
+                            client_fd,
+                            SOL_SOCKET,
+                            SO_SNDBUF,
+                            &send_buffer_size,
+                            sizeof(send_buffer_size)
+                        ) == -1
+                    ) {
+                        perror("setsockopt SO_SNDBUF");
+                    }
+
 
 
                     //

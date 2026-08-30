@@ -191,6 +191,13 @@ bool write_to_socket(
                 errno == EWOULDBLOCK
             )
         ) {
+
+            std::cout
+                << "[BACKPRESSURE] fd="
+                << fd
+                << " pending="
+                << conn.out_buffer.size()
+                << " bytes\n";
             return true;
         }
 
