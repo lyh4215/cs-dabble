@@ -6,6 +6,6 @@
 
 ## Day 3 : Network System
 
-## Day 4 : Network Security(HMAC, TLS)
+## Day 4 : Network Security (HMAC, TLS)
 
-## Day 5 : Distributed Computing
+## Day 5 : Distributed Computing (Scheduling, Quorum, Raft)
