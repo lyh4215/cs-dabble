@@ -9,3 +9,7 @@
 ## Day 4 : Network Security (HMAC, TLS)
 
 ## Day 5 : Distributed Computing (Scheduling, Quorum, Raft)
+
+## Day 6 : Service / Microservice Engineering
+
+## Day 7 : Database Internal
