@@ -15,3 +15,5 @@
 ## Day 7 : Database Internal
 
 ## Day 8 : Vector Database
+
+## Day 9 : Parallel / GPU Data Processing
