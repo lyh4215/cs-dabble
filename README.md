@@ -13,3 +13,5 @@
 ## Day 6 : Service / Microservice Engineering
 
 ## Day 7 : Database Internal
+
+## Day 8 : Vector Database
