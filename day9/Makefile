@@ -19,3 +19,9 @@ divergence: divergence.cu
 
 run-divergence: divergence
 	./divergence
+
+register-ilp: register_ilp.cu
+	$(NVCC) -O3 -arch=$(ARCH) -Xptxas -v register_ilp.cu -o register_ilp
+
+run-register-ilp: register-ilp
+	./register_ilp
