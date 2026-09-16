@@ -193,3 +193,116 @@ for n in SIZES:
             f"{'-':>12} "
             f"{'-':>10}"
         )
+
+# ============================================================
+# Batched matmul
+# ============================================================
+
+if DEVICE == "cuda":
+
+    print()
+    print("=== BATCHED MATMUL ===")
+
+    MATRIX_SIZE = 64
+
+    BATCH_SIZES = [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024,
+    ]
+
+
+    print(
+        f"{'batch':>8} "
+        f"{'latency(ms)':>14} "
+        f"{'items/s':>16} "
+        f"{'us/item':>12}"
+    )
+
+    print("-" * 58)
+
+
+    for batch in BATCH_SIZES:
+
+        A = torch.randn(
+            batch,
+            MATRIX_SIZE,
+            MATRIX_SIZE,
+            device="cuda",
+        )
+
+        B = torch.randn(
+            batch,
+            MATRIX_SIZE,
+            MATRIX_SIZE,
+            device="cuda",
+        )
+
+
+        # warmup
+        for _ in range(10):
+            _ = A @ B
+
+        torch.cuda.synchronize()
+
+
+        start = torch.cuda.Event(
+            enable_timing=True
+        )
+
+        end = torch.cuda.Event(
+            enable_timing=True
+        )
+
+
+        times = []
+
+        for _ in range(30):
+
+            start.record()
+
+            _ = A @ B
+
+            end.record()
+
+            torch.cuda.synchronize()
+
+            times.append(
+                start.elapsed_time(
+                    end
+                )
+            )
+
+
+        latency_ms = (
+            statistics.median(
+                times
+            )
+        )
+
+        items_per_sec = (
+            batch
+            / (latency_ms / 1000)
+        )
+
+        us_per_item = (
+            latency_ms
+            * 1000
+            / batch
+        )
+
+
+        print(
+            f"{batch:>8} "
+            f"{latency_ms:>14.4f} "
+            f"{items_per_sec:>16,.0f} "
+            f"{us_per_item:>12.3f}"
+        )
