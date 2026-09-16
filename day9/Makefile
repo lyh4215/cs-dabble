@@ -13,3 +13,9 @@ run: $(TARGET)
 
 clean:
 	rm -f $(TARGET)
+
+divergence: divergence.cu
+	$(NVCC) -O3 -arch=$(ARCH) divergence.cu -o divergence
+
+run-divergence: divergence
+	./divergence
