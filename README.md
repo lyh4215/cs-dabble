@@ -17,3 +17,5 @@
 ## Day 8 : Vector Database
 
 ## Day 9 : Parallel / GPU Data Processing
+
+## Day 10 : IoT / Context / Localization
