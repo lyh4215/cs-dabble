@@ -21,3 +21,5 @@
 ## Day 10 : IoT / Context / Localization
 
 ## Day 11 : C -> Rust Migration
+
+## Day 12 : Loop Vectorization
