@@ -23,3 +23,8 @@
 ## Day 11 : C -> Rust Migration
 
 ## Day 12 : Loop Vectorization
+
+## Day 13 : Program Analysis
+
+## Day 14 : Fault Localization
+
