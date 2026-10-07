@@ -224,6 +224,76 @@ def directed_fuzz(max_trials=100000):
 
     return None
 
+def pow2_distance(x):
+    if x <= 0:
+        return float("inf")
+
+    powers = [1 << k for k in range(11)]
+
+    return min(
+        abs(x - p)
+        for p in powers
+    )
+
+def fitness(p):
+
+    depth, coverage, hit = compile_program(p)
+
+    if hit:
+        return depth, 0
+
+    if depth == 3:
+        distance = pow2_distance(p.divisor)
+    else:
+        distance = 0
+
+    return depth, -distance
+
+def directed_fuzz_branch_distance(max_trials=100000):
+
+    current = random_program()
+
+    current_fitness = fitness(current)
+
+    print(
+        f"start: {current} "
+        f"fitness={current_fitness}"
+    )
+
+    for trial in range(1, max_trials + 1):
+
+        candidate = mutate(current)
+
+        depth, coverage, hit = compile_program(
+            candidate
+        )
+
+        candidate_fitness = fitness(candidate)
+
+        if hit:
+
+            print(
+                f"trial {trial:4d}: "
+                f"{candidate} "
+                f"fitness={candidate_fitness} "
+                f"TARGET!"
+            )
+
+            return trial, candidate
+
+        if candidate_fitness > current_fitness:
+
+            current = candidate
+            current_fitness = candidate_fitness
+
+            print(
+                f"trial {trial:4d}: "
+                f"{candidate} "
+                f"fitness={candidate_fitness}"
+            )
+
+    return None
+
 print(
     "\n================================"
 )
@@ -247,7 +317,7 @@ print(
 
 random.seed(0)
 
-result = directed_fuzz()
+result = directed_fuzz_branch_distance()
 
 print("\nRESULT:")
 print(result)
