@@ -770,3 +770,127 @@ for lineno, line in enumerate(
         f"{marker}"
     )
 
+import random
+
+
+def rank_with_subset(selected_mutants):
+
+    total_f2p = sum(
+        m["f_to_p"]
+        for m in selected_mutants
+    )
+
+    total_p2f = sum(
+        m["p_to_f"]
+        for m in selected_mutants
+    )
+
+    if total_p2f == 0:
+        return None
+
+    alpha = (
+        total_f2p * NUM_PASS
+        /
+        (total_p2f * NUM_FAIL)
+    )
+
+    by_line = defaultdict(list)
+
+    for m in selected_mutants:
+        by_line[m["line"]].append(m)
+
+    ranking = []
+
+    for line, ms in by_line.items():
+
+        scores = []
+
+        for m in ms:
+
+            score = (
+                m["f_to_p"] / NUM_FAIL
+                -
+                alpha
+                * m["p_to_f"] / NUM_PASS
+            )
+
+            scores.append(score)
+
+        ranking.append(
+            (
+                sum(scores) / len(scores),
+                line
+            )
+        )
+
+    ranking.sort(reverse=True)
+
+    return ranking
+
+
+def experiment_sampling(
+    ratios=(0.4, 0.6, 0.8, 1.0),
+    repeats=1000,
+):
+
+    rng = random.Random(0)
+
+    print(
+        "\n================================"
+    )
+    print(
+        "MUTANT SAMPLING EXPERIMENT"
+    )
+    print(
+        "================================"
+    )
+
+    n = len(mutant_results)
+
+    for ratio in ratios:
+
+        k = max(
+            1,
+            round(n * ratio)
+        )
+
+        valid = 0
+        bug_top1 = 0
+
+        for _ in range(repeats):
+
+            subset = rng.sample(
+                mutant_results,
+                k
+            )
+
+            ranking = rank_with_subset(
+                subset
+            )
+
+            if ranking is None:
+                continue
+
+            valid += 1
+
+            top_line = ranking[0][1]
+
+            if top_line == BUG_LINE:
+                bug_top1 += 1
+
+        accuracy = (
+            bug_top1 / valid
+            if valid
+            else 0
+        )
+
+        cost_ratio = k / n
+
+        print(
+            f"mutants={k}/{n} "
+            f"cost≈{cost_ratio:.0%} "
+            f"bug_top1={accuracy:.3f}"
+        )
+
+
+experiment_sampling()
