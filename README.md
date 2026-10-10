@@ -39,3 +39,5 @@
 ## Day 19 : Cyber-Physical
 
 ## Day 20 : Cryptography
+
+## Day 21 : Optimization, Training Dynamics
