@@ -45,3 +45,5 @@
 ## Day 22 : Mixture of Experts
 
 ## Day 23 : Graph ML
+
+## Day 24 : Data Mining
