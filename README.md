@@ -43,3 +43,5 @@
 ## Day 21 : Optimization, Training Dynamics
 
 ## Day 22 : Mixture of Experts
+
+## Day 23 : Graph ML
