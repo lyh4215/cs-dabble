@@ -47,3 +47,5 @@
 ## Day 23 : Graph ML
 
 ## Day 24 : Data Mining
+
+## Day 25 : NLP
