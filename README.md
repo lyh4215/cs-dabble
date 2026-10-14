@@ -49,3 +49,5 @@
 ## Day 24 : Data Mining
 
 ## Day 25 : NLP
+
+## Day 26 : Knowledge Engineering
