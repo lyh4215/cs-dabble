@@ -51,3 +51,5 @@
 ## Day 25 : NLP
 
 ## Day 26 : Knowledge Engineering
+
+## Day 27 : World Models
