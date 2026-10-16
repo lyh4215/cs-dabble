@@ -53,3 +53,5 @@
 ## Day 26 : Knowledge Engineering
 
 ## Day 27 : World Models
+
+## Day 28 : Computer Vision / 6D Pose Estimation
