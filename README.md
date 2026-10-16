@@ -55,3 +55,6 @@
 ## Day 27 : World Models
 
 ## Day 28 : Computer Vision / 6D Pose Estimation
+
+## Day 29 : Multimodal AI / Vision-Language Models
+
