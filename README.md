@@ -59,3 +59,5 @@
 ## Day 29 : Multimodal AI / Vision-Language Models
 
 ## Day 30 : 3D Point Cloud Registration
+
+## Day 31 : Frame Generation
