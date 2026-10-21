@@ -63,3 +63,9 @@
 ## Day 31 : Frame Generation
 
 ## Day 32 : Computational Imaging
+
+## Day 33 : Robot Planning
+
+## Day 34 : HCI
+
+## Day 35 : Ubiquitous / Care Computing
