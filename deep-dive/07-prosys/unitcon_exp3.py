@@ -138,7 +138,10 @@ def step(s: State, action: str) -> State:
 
 
 def search(relevant: set[str] | None, depth=7):
-    queue = deque([((), State())]); seen = set(); explored = 0; pruned = 0
+    queue = deque([((), State())])
+    seen = set()
+    explored = 0
+    pruned = 0
     field_order = ('authorized', 'enabled', 'payload', 'noise')
     if relevant is not None:
         seen.add((False,) + tuple(getattr(State(), f) for f in field_order if f in relevant))
