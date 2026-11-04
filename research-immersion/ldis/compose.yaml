@@ -1,0 +1,15 @@
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ldis
+      POSTGRES_PASSWORD: ldis
+      POSTGRES_DB: ldis
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
